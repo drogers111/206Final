@@ -68,9 +68,11 @@ def fetch_pokemon_data(start_id, end_id):
             # Insert moves into PokemonDetails table
             for move in data['moves']:
                 move_name = move['move']['name']
-                learn_method = ", ".join(
+                # Extract unique learning methods and format them
+                learn_methods = set(
                     method['move_learn_method']['name'] for method in move['version_group_details']
                 )
+                learn_method = ", ".join(sorted(learn_methods))  
                 cursor.execute("""
                 INSERT INTO PokemonDetails (id, type, name, detail)
                 VALUES (?, ?, ?, ?)
