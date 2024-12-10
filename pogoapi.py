@@ -3,7 +3,7 @@ import requests
 import matplotlib.pyplot as plt
 
 # Connect to SQLite database
-db_name = "pokemon.db"
+db_name = "pokemon_go.db"
 conn = sqlite3.connect(db_name)
 cursor = conn.cursor()
 
@@ -28,9 +28,6 @@ def fetch_and_store_pokemon_stats(api_url):
         response.raise_for_status() 
         data = response.json()
 
-        print("Fetched data from API:")
-        print(data)  
-
         for pokemon in data:
             # Extract data fields
             pokemon_id = int(pokemon['pokemon_id'])
@@ -39,8 +36,8 @@ def fetch_and_store_pokemon_stats(api_url):
             base_defense = int(pokemon['base_defense'])
             base_stamina = int(pokemon['base_stamina'])
 
-            #Debug information
-            print(f"Storing Pokémon: {name} (ID: {pokemon_id}, Attack: {base_attack})") 
+            # #Debug information
+            # print(f"Storing Pokémon: {name} (ID: {pokemon_id}, Attack: {base_attack})") 
 
             # Insert or replace into the database
             cursor.execute("""
