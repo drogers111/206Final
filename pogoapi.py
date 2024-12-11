@@ -3,7 +3,7 @@ import requests
 import matplotlib.pyplot as plt
 
 # Connect to SQLite database
-db_name = "pokemon_go.db"
+db_name = "pokemon.db"
 conn = sqlite3.connect(db_name)
 cursor = conn.cursor()
 
