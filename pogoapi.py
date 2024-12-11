@@ -2,88 +2,84 @@ import sqlite3
 import requests
 import matplotlib.pyplot as plt
 
-# Connect to SQLite database
-db_name = "pokemon.db"
-conn = sqlite3.connect(db_name)
-cursor = conn.cursor()
+DB_NAME = "pokemon.db"  # Constant for database name
+API_URL = "https://pogoapi.net/api/v1/pokemon_stats.json" # Constant for API URL
 
-# Create the Pokemon table with the correct structure
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS Pokemon (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    base_attack INTEGER,
-    base_defense INTEGER,
-    base_stamina INTEGER
-)
-""")
-conn.commit()
 
-def fetch_and_store_pokemon_stats(api_url):
-    """
-    Fetch Pokémon stats from the given API and store them in the database.
-    """
+def create_pokemon_table(cursor):
+    """Creates the Pokemon table if it doesn't exist."""
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Pokemon (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE, 
+        base_attack INTEGER,
+        base_defense INTEGER,
+        base_stamina INTEGER
+    )
+    """)
+
+def fetch_and_store_pokemon_stats(cursor, api_url):
+    """Fetches Pokémon stats and stores them in the database."""
     try:
         response = requests.get(api_url)
-        response.raise_for_status() 
+        response.raise_for_status()
         data = response.json()
 
-        for pokemon in data:
-            # Extract data fields
-            pokemon_id = int(pokemon['pokemon_id'])
-            name = pokemon['pokemon_name']
-            base_attack = int(pokemon['base_attack'])
-            base_defense = int(pokemon['base_defense'])
-            base_stamina = int(pokemon['base_stamina'])
-
-            # #Debug information
-            # print(f"Storing Pokémon: {name} (ID: {pokemon_id}, Attack: {base_attack})") 
-
-            # Insert or replace into the database
-            cursor.execute("""
+        # Efficiently insert/update using executemany
+        pokemon_data = [(int(p['pokemon_id']), p['pokemon_name'], int(p['base_attack']), int(p['base_defense']), int(p['base_stamina'])) for p in data]
+        cursor.executemany("""
             INSERT OR REPLACE INTO Pokemon (id, name, base_attack, base_defense, base_stamina)
             VALUES (?, ?, ?, ?, ?)
-            """, (pokemon_id, name, base_attack, base_defense, base_stamina))
+        """, pokemon_data)
 
-        conn.commit()
-        print("Pokémon stats successfully stored in the database.")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+        return True # Indicate success
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from API: {e}")
+        return False
+    except (sqlite3.Error, KeyError, ValueError) as e:  # Catch specific DB and data errors
+        print(f"Error processing or storing data: {e}")
+        return False
 
-def plot_attack_comparison(pokemon_ids):
-    """
-    Plot a bar chart comparing the base attack stats of the specified Pokémon.
-    """
-    pokemon_names = []
-    attack_values = []
 
-    for pokemon_id in pokemon_ids:
-        cursor.execute("SELECT name, base_attack FROM Pokemon WHERE id = ?", (pokemon_id,))
-        result = cursor.fetchone()
-        if result:
-            pokemon_names.append(result[0])
-            attack_values.append(result[1])
-        else:
-            print(f"Pokémon ID {pokemon_id} not found in the database.")
+def plot_attack_comparison(cursor, pokemon_ids):
+    """Plots a bar chart comparing base attack stats."""
+    pokemon_names, attack_values = [], []
+    try:
+      cursor.execute("SELECT name, base_attack FROM Pokemon WHERE id IN ({})".format(",".join(["?"] * len(pokemon_ids))), pokemon_ids) #More efficient query for multiple pokemon ids.
+      results = cursor.fetchall()
+      if results:
+          pokemon_names = [row[0] for row in results]
+          attack_values = [row[1] for row in results]
+      else:
+          print("Pokémon IDs not found in the database.")
 
-    if pokemon_names and attack_values:
-        # Plot the bar chart
-        plt.bar(pokemon_names, attack_values, color='skyblue')
-        plt.title("Comparison of Base Attack Stats")
-        plt.xlabel("Pokémon")
-        plt.ylabel("Base Attack")
-        plt.tight_layout() 
-        plt.show()
-    else:
-        print("No Pokémon data available for plotting.")
+      if pokemon_names and attack_values:
+          plt.bar(pokemon_names, attack_values, color='skyblue')
+          plt.title("Comparison of Base Attack Stats")
+          plt.xlabel("Pokémon")
+          plt.ylabel("Base Attack")
+          plt.tight_layout()
+          plt.show()
+    except sqlite3.Error as e:
+        print(f"Database error during plotting: {e}")
 
-# Fetch and store Pokémon data from the API
-api_url = "https://pogoapi.net/api/v1/pokemon_stats.json"
-fetch_and_store_pokemon_stats(api_url)
 
-# Plot comparison for specific Pokémon IDs
-pokemon_ids = [1, 2]  
-plot_attack_comparison(pokemon_ids)
 
-# Close the database connection
-conn.close()
+def main():
+    """Main function to manage database and plotting."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    create_pokemon_table(cursor)
+
+    if fetch_and_store_pokemon_stats(cursor, API_URL):
+        print("Data successfully fetched and stored (or updated).")
+        pokemon_ids = [1, 25, 150] 
+        plot_attack_comparison(cursor, pokemon_ids)
+
+    conn.commit()
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()
