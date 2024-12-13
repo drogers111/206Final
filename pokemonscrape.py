@@ -9,7 +9,7 @@ cursor = conn.cursor()
 
 # Ensure the PokemonImages table exists correctly
 cursor.execute("""
-CREATE TABLE PokemonImages (
+CREATE TABLE IF NOT EXISTS PokemonImages(
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     image BLOB NOT NULL,
@@ -26,11 +26,16 @@ def fetch_and_store_images(start_id, end_id):
         return
     
     soup = BeautifulSoup(response.content, "html.parser")
-    rows = soup.find_all("td", style="font-family:monospace,monospace")
+    rows = soup.find_all("tr")  # We'll loop through all the rows in the table
 
     for row in rows:
+        # Find the ID column (first <td>)
+        cols = row.find_all("td")
+        if len(cols) < 3:
+            continue
+        
         # Extract Pokémon ID (e.g., "#0001")
-        pokemon_id_text = row.text.strip()
+        pokemon_id_text = cols[0].text.strip()
         if not pokemon_id_text.startswith("#"):
             continue
         
@@ -40,9 +45,17 @@ def fetch_and_store_images(start_id, end_id):
         if not (start_id <= pokemon_id <= end_id):
             continue
 
-        # Find the next sibling containing the image
-        image_td = row.find_next_sibling("td")
-        img_tag = image_td.find("img") if image_td else None
+        # Check if the Pokémon ID already exists in the PokemonImages table
+        cursor.execute("SELECT id FROM PokemonImages WHERE id = ?", (pokemon_id,))
+        if cursor.fetchone():
+            print(f"Pokémon ID {pokemon_id} already has an image in the database, skipping.")
+            continue
+
+        # Extract Pokémon name from the third <td> (it contains the name as text)
+        pokemon_name = cols[2].find("a").text.strip()
+
+        # Find the image URL in the second <td> (contains <img>)
+        img_tag = cols[1].find("img") if len(cols) > 1 else None
         if not img_tag or "src" not in img_tag.attrs:
             print(f"No image found for Pokémon ID {pokemon_id}.")
             continue
@@ -60,17 +73,9 @@ def fetch_and_store_images(start_id, end_id):
         # Convert image content to binary
         image_data = img_response.content
 
-        # Get Pokémon name from the database
-        cursor.execute("SELECT name FROM pokemon WHERE id = ?", (pokemon_id,))
-        result = cursor.fetchone()
-        if not result:
-            print(f"No Pokémon found for ID {pokemon_id}, skipping.")
-            continue
-        pokemon_name = result[0]
-
-        # Insert into database
+        # Insert into database with INSERT OR IGNORE to skip duplicates
         cursor.execute("""
-        INSERT INTO PokemonImages (id, name, image)
+        INSERT OR IGNORE INTO PokemonImages (id, name, image)
         VALUES (?, ?, ?)
         """, (pokemon_id, pokemon_name, image_data))
         conn.commit()
