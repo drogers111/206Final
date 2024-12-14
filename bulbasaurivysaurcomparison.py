@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import json
 
-# Step 1: Connect to the database
+# Connect to the database
 def connect_db(db_path):
     try:
         conn = sqlite3.connect(db_path)
@@ -12,7 +12,7 @@ def connect_db(db_path):
         print(f"Error connecting to database: {e}")
         return None
 
-# Step 2: Retrieve data for specific Pokemon
+# Retrieve data for specific Pokemon
 def fetch_pokemon_stats(conn):
     try:
         query = """
@@ -28,7 +28,7 @@ def fetch_pokemon_stats(conn):
         print(f"Error fetching Pokemon stats: {e}")
         return None
 
-# Step 3: Calculate averages and differences
+# Calculate averages and differences
 def calculate_averages_and_differences(df):
     try:
         stats = ['hp', 'attack', 'defense', 'special_attack', 'special_defense', 'speed']
@@ -54,7 +54,7 @@ def calculate_averages_and_differences(df):
         print(f"Error calculating averages and differences: {e}")
         return None
 
-# Step 4: Visualize data
+# Visualize data
 def visualize_pokemon_stats(df):
     try:
         stats = ['hp', 'attack', 'defense', 'special_attack', 'special_defense', 'speed']
@@ -76,9 +76,8 @@ def visualize_pokemon_stats(df):
     except Exception as e:
         print(f"Error visualizing Pokemon stats: {e}")
 
-# Main function
 def main():
-    db_path = 'pokemon.db'  # Replace with your actual database path
+    db_path = 'pokemon.db' 
     conn = connect_db(db_path)
     if conn:
         specific_pokemon_df = fetch_pokemon_stats(conn)

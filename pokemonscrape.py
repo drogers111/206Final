@@ -51,7 +51,7 @@ def fetch_and_store_images(start_id, end_id):
             print(f"Pokémon ID {pokemon_id} already has an image in the database, skipping.")
             continue
 
-        # Extract Pokémon name from the third <td> (it contains the name as text)
+        # Extract Pokémon name from the third <td> 
         pokemon_name = cols[2].find("a").text.strip()
 
         # Find the image URL in the second <td> (contains <img>)
