@@ -10,7 +10,6 @@ cursor = conn.cursor()
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS PokemonGoStats (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
     base_attack INTEGER,
     base_defense INTEGER,
     base_stamina INTEGER
@@ -19,9 +18,15 @@ CREATE TABLE IF NOT EXISTS PokemonGoStats (
 conn.commit()
 
 
-def fetch_pokemon_go_data(start_id, end_id):
-    """Fetch Pokémon stats from the Pokémon GO API for a range of IDs."""
+def fetch_pokemon_go_data():
+    """Fetch Pokémon stats from the Pokémon GO API with row and count limits."""
     api_url = "https://pogoapi.net/api/v1/pokemon_stats.json"
+
+    # Check current count of Pokémon in the database
+    cursor.execute("SELECT COUNT(*) FROM PokemonGoStats")
+    current_count = cursor.fetchone()[0]
+
+    rows_added = 0
 
     try:
         # Fetch the full dataset from the API
@@ -29,22 +34,25 @@ def fetch_pokemon_go_data(start_id, end_id):
         response.raise_for_status()
         data = response.json()
 
-        for pokemon_id in range(start_id, end_id + 1):
+        for pokemon_data in data:
+            pokemon_id = int(pokemon_data['pokemon_id'])
+
+            # Stop processing based on defined limits (25 stored per time ran up until program has been ran 4 times and stored 100 items)
+            if rows_added >= 25 and current_count < 76:
+                print("25 PokemonGo Pokemon added to table PokemonGoStats.")
+                break
+            if rows_added >= 100:
+                print("100 PokemonGo Pokemon added to table PokemonGoStats, run again for the next batch.")
+                break
+
+            #Ensuring unique constraint met
             cursor.execute("SELECT id FROM PokemonGoStats WHERE id = ?", (pokemon_id,))
             if cursor.fetchone():
-                print(f"Pokémon ID {pokemon_id} already in database, skipping.")
-                continue
-
-            # Find the Pokémon in the API data
-            pokemon_data = next((p for p in data if int(p['pokemon_id']) == pokemon_id), None)
-            if not pokemon_data:
-                print(f"Pokémon ID {pokemon_id} not found in the API data, skipping.")
                 continue
 
             # Prepare data for insertion
             pokemon = (
-                int(pokemon_data['pokemon_id']),
-                pokemon_data['pokemon_name'],
+                pokemon_id,
                 int(pokemon_data['base_attack']),
                 int(pokemon_data['base_defense']),
                 int(pokemon_data['base_stamina']),
@@ -52,12 +60,12 @@ def fetch_pokemon_go_data(start_id, end_id):
 
             # Insert data into the database
             cursor.execute("""
-            INSERT INTO PokemonGoStats (id, name, base_attack, base_defense, base_stamina)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO PokemonGoStats (id, base_attack, base_defense, base_stamina)
+            VALUES (?, ?, ?, ?)
             """, pokemon)
             conn.commit()
 
-            print(f"Stored data for Pokémon: {pokemon_data['pokemon_name']} (ID: {pokemon_id})")
+            rows_added += 1
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data from API: {e}")
@@ -65,10 +73,8 @@ def fetch_pokemon_go_data(start_id, end_id):
         print(f"Error processing or storing data: {e}")
 
 
-# Prompt user for a range of Pokémon IDs
-start_id = int(input("Enter the starting Pokémon ID: "))
-end_id = int(input("Enter the ending Pokémon ID: "))
-fetch_pokemon_go_data(start_id, end_id)
+# Run the script
+fetch_pokemon_go_data()
 
 # Close the database connection
 conn.close()
