@@ -17,10 +17,9 @@ def fetch_pokemon_stats(conn):
     try:
         query = """
         SELECT 
-        p.name AS Pokemon,
-        p.hp, p.attack, p.defense, p.special_attack, p.special_defense, p.speed
+            p.name AS Pokemon,
+            p.hp, p.attack, p.defense, p.special_attack, p.special_defense, p.speed
         FROM pokemon p
-        JOIN PokemonGoStats g ON p.id = g.id
         WHERE p.name IN ('bulbasaur', 'ivysaur')
         """
         df = pd.read_sql_query(query, conn)
@@ -43,11 +42,14 @@ def calculate_averages_and_differences(df):
         }
 
         # Save results to a text file
-        with open('bulbasaur_ivysaur_stats.txt', 'w') as f:
-            f.write("Base Stats Averages:\n")
-            json.dump(result['averages'], f, indent=4)
-            f.write("\n\nBase Stats Differences (Ivysaur - Bulbasaur):\n")
-            json.dump(result['differences'], f, indent=4)
+        try: 
+            with open('calculatedValues.txt', 'a') as f:
+                f.write("Base Stats Averages of Bulbasaur and Ivysaur:\n")
+                json.dump(result['averages'], f, indent=4)
+                f.write("\n\nBase Stats Differences (Ivysaur - Bulbasaur):\n")
+                json.dump(result['differences'], f, indent=4)
+        except Exception as e:
+            print(f'Error writing to file: {e}')
 
         print("Calculations written to 'bulbasaur_ivysaur_stats.txt'.")
         return result

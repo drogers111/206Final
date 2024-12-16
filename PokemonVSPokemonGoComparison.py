@@ -36,10 +36,10 @@ def process_data(conn):
             'Average_Attack': [avg_pokemon_attack, avg_pokemongo_attack]
         })
 
-        return df, comparison
+        return df, comparison, avg_pokemon_attack, avg_pokemongo_attack
     except Exception as e:
         print(f"Error processing data: {e}")
-        return None, None
+        return None, None, None, None
 
 # Visualize data
 def visualize_data(df, comparison):
@@ -66,13 +66,26 @@ def visualize_data(df, comparison):
     except Exception as e:
         print(f"Error visualizing data: {e}")
 
+# Write calculation results to text file
+def write_results_to_file(avg_pokemon_attack, avg_pokemongo_attack):
+    try:
+        with open('calculatedValues.txt', 'a') as file:
+            file.write(f"\nAverage Attack Values:\n")
+            file.write(f"Pokemon (Attack + Special Attack): {avg_pokemon_attack:.2f}\n")
+            file.write(f"Pokemon Go (Base Attack): {avg_pokemongo_attack:.2f}\n")
+            file.write("\n")
+        print("Calculation results written to 'calculatedValues.txt'.")
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+
 def main():
     db_path = 'pokemon.db' 
     conn = connect_db(db_path)
     if conn:
-        df, comparison = process_data(conn)
+        df, comparison, avg_pokemon_attack, avg_pokemongo_attack = process_data(conn)
         if df is not None and comparison is not None:
             visualize_data(df, comparison)
+            write_results_to_file(avg_pokemon_attack, avg_pokemongo_attack)
         conn.close()
 
 if __name__ == "__main__":
