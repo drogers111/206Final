@@ -37,7 +37,7 @@ def plot_stat_progression(df):
             plt.plot(df['name'], df[stat], label=stat.capitalize(), marker='o')
         
         plt.title('Stat Progression for Evolution Line: Bulbasaur → Ivysaur → Venusaur')
-        plt.xlabel('Evolutionary Line')
+        plt.xlabel('Pokemon')
         plt.ylabel('Base Stat Value')
         plt.legend()
         plt.grid(True, linestyle='--', alpha=0.6)
